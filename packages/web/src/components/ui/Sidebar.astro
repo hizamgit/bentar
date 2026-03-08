@@ -1,0 +1,125 @@
+---
+import ModelTree from './ModelTree.astro';
+---
+
+<aside class="sidebar">
+  <div class="sidebar-section">
+    <div class="panel-header">
+      <h3>Models</h3>
+    </div>
+    <div id="models-list" class="models-list">
+      <p class="empty">No models loaded</p>
+    </div>
+  </div>
+
+  <div class="sidebar-section flex-1">
+    <ModelTree />
+  </div>
+
+  <div class="sidebar-section">
+    <div class="panel-header">
+      <h3>Properties</h3>
+    </div>
+    <div id="properties-panel" class="properties-panel">
+      <p class="empty">Select an element to view properties</p>
+    </div>
+  </div>
+</aside>
+
+<style>
+  .sidebar {
+    width: var(--sidebar-width);
+    background: var(--color-surface);
+    border-right: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .sidebar-section {
+    border-bottom: 1px solid var(--color-border);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-section.flex-1 {
+    flex: 1;
+  }
+
+  .panel-header {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .panel-header h3 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+  }
+
+  .models-list {
+    padding: 0.5rem;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+
+  .models-list :global(.model-item) {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .models-list :global(.model-item:hover) {
+    background: var(--color-surface-hover);
+  }
+
+  .models-list :global(.model-format) {
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    background: var(--color-bg);
+    color: var(--color-primary);
+  }
+
+  .properties-panel {
+    padding: 0.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .properties-panel :global(.prop-row) {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .properties-panel :global(.prop-name) {
+    color: var(--color-text-muted);
+  }
+
+  .properties-panel :global(.prop-value) {
+    color: var(--color-text);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+  }
+
+  .empty {
+    color: var(--color-text-muted);
+    font-size: 0.8125rem;
+    text-align: center;
+    padding: 1rem 0.5rem;
+  }
+</style>

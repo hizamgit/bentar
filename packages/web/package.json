@@ -1,0 +1,21 @@
+{
+  "name": "@bentar/web",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "astro check"
+  },
+  "dependencies": {
+    "@bentar/shared": "*",
+    "astro": "^5.17.1",
+    "socket.io-client": "^4.8.0",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.170.0",
+    "typescript": "^5.7.0"
+  }
+}

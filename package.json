@@ -1,14 +1,19 @@
 {
   "name": "bentar",
-  "type": "module",
+  "private": true,
   "version": "0.0.1",
+  "type": "module",
+  "workspaces": [
+    "packages/shared",
+    "packages/server",
+    "packages/web"
+  ],
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "astro": "astro"
-  },
-  "dependencies": {
-    "astro": "^5.17.1"
+    "dev": "npm run dev:server & npm run dev:web",
+    "dev:web": "npm run dev -w @bentar/web",
+    "dev:server": "npm run dev -w @bentar/server",
+    "build": "npm run build -w @bentar/shared && npm run build -w @bentar/server && npm run build -w @bentar/web",
+    "build:web": "npm run build -w @bentar/web",
+    "build:server": "npm run build -w @bentar/server"
   }
 }

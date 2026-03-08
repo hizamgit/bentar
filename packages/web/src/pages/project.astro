@@ -1,0 +1,79 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Toolbar from '../components/ui/Toolbar.astro';
+import Sidebar from '../components/ui/Sidebar.astro';
+import BIMViewer from '../components/viewer/BIMViewer.astro';
+import UserPresence from '../components/collaboration/UserPresence.astro';
+import ChatPanel from '../components/collaboration/ChatPanel.astro';
+---
+
+<Layout title="Project" fullscreen>
+  <div class="project-layout" id="project-layout">
+    <Toolbar />
+    <div class="main-area">
+      <Sidebar />
+      <div class="viewer-area">
+        <BIMViewer />
+      </div>
+      <div class="right-panel">
+        <UserPresence />
+        <ChatPanel />
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { initViewer } from '../scripts/viewer';
+  import { initCollaboration } from '../scripts/collaboration';
+
+  // Read project ID from URL query param: /project?id=xxx
+  const params = new URLSearchParams(window.location.search);
+  const projectId = params.get('id');
+
+  if (projectId) {
+    const projectNameEl = document.getElementById('project-name');
+    if (projectNameEl) {
+      fetch(`/api/projects/${projectId}`)
+        .then((r) => r.json())
+        .then((p) => { projectNameEl.textContent = p.name; })
+        .catch(() => { projectNameEl.textContent = `Project ${projectId.slice(0, 8)}`; });
+    }
+
+    const canvas = document.getElementById('bim-canvas') as HTMLCanvasElement;
+    if (canvas) {
+      const viewer = initViewer(canvas);
+      initCollaboration(projectId, viewer);
+    }
+  } else {
+    window.location.href = '/';
+  }
+</script>
+
+<style>
+  .project-layout {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .main-area {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  .viewer-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .right-panel {
+    width: 280px;
+    background: var(--color-surface);
+    border-left: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+  }
+</style>
