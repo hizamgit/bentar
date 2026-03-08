@@ -128,6 +128,15 @@ export function initViewer(canvas: HTMLCanvasElement): ViewerInstance {
 
       console.log(`IFC viewer: loaded ${result.elements.length} elements`);
       return { group: result.group, elements: result.elements };
+    } catch (err) {
+      console.error('IFC loading failed:', err);
+      if (loading) {
+        loading.textContent = `IFC load error: ${err instanceof Error ? err.message : 'Unknown error'}`;
+        loading.classList.remove('hidden');
+        // Auto-hide error after 5 seconds
+        setTimeout(() => loading.classList.add('hidden'), 5000);
+      }
+      throw err;
     } finally {
       if (loading) loading.classList.add('hidden');
     }

@@ -84,8 +84,13 @@ export async function loadIFC(
 
   // Fetch the IFC file
   onProgress?.(5);
+  console.log('[IFC Loader] Fetching:', url);
   const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch IFC file: ${response.status} ${response.statusText} (${url})`);
+  }
   const buffer = await response.arrayBuffer();
+  console.log('[IFC Loader] File size:', buffer.byteLength, 'bytes');
   const data = new Uint8Array(buffer);
 
   onProgress?.(20);
