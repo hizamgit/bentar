@@ -1,44 +1,52 @@
 import * as THREE from 'three';
-import * as WebIFC from 'web-ifc';
 
-let ifcApi: WebIFC.IfcAPI | null = null;
+// Lazy-loaded web-ifc module (dynamic import avoids blocking viewer init)
+let WebIFC: typeof import('web-ifc') | null = null;
+let ifcApi: InstanceType<typeof import('web-ifc').IfcAPI> | null = null;
 
-async function getIfcApi(): Promise<WebIFC.IfcAPI> {
-  if (ifcApi) return ifcApi;
+async function getIfcApi() {
+  if (ifcApi) return { api: ifcApi, wasm: WebIFC! };
+
+  // Dynamic import — only loads web-ifc WASM when first IFC file is opened
+  WebIFC = await import('web-ifc');
 
   ifcApi = new WebIFC.IfcAPI();
   ifcApi.SetWasmPath('/');
   await ifcApi.Init();
-  return ifcApi;
+  return { api: ifcApi, wasm: WebIFC };
 }
 
-// IFC type ID to human-readable name mapping (common types)
-const IFC_TYPE_NAMES: Record<number, string> = {
-  [WebIFC.IFCWALL]: 'IfcWall',
-  [WebIFC.IFCWALLSTANDARDCASE]: 'IfcWallStandardCase',
-  [WebIFC.IFCSLAB]: 'IfcSlab',
-  [WebIFC.IFCCOLUMN]: 'IfcColumn',
-  [WebIFC.IFCBEAM]: 'IfcBeam',
-  [WebIFC.IFCDOOR]: 'IfcDoor',
-  [WebIFC.IFCWINDOW]: 'IfcWindow',
-  [WebIFC.IFCROOF]: 'IfcRoof',
-  [WebIFC.IFCSTAIR]: 'IfcStair',
-  [WebIFC.IFCSTAIRFLIGHT]: 'IfcStairFlight',
-  [WebIFC.IFCRAILING]: 'IfcRailing',
-  [WebIFC.IFCPLATE]: 'IfcPlate',
-  [WebIFC.IFCMEMBER]: 'IfcMember',
-  [WebIFC.IFCCURTAINWALL]: 'IfcCurtainWall',
-  [WebIFC.IFCFURNISHINGELEMENT]: 'IfcFurnishingElement',
-  [WebIFC.IFCBUILDINGELEMENTPROXY]: 'IfcBuildingElementProxy',
-  [WebIFC.IFCSPACE]: 'IfcSpace',
-  [WebIFC.IFCOPENINGELEMENT]: 'IfcOpeningElement',
-  [WebIFC.IFCFLOWSEGMENT]: 'IfcFlowSegment',
-  [WebIFC.IFCFLOWTERMINAL]: 'IfcFlowTerminal',
-  [WebIFC.IFCFLOWFITTING]: 'IfcFlowFitting',
-  [WebIFC.IFCCOVERING]: 'IfcCovering',
-  [WebIFC.IFCFOOTING]: 'IfcFooting',
-  [WebIFC.IFCPILE]: 'IfcPile',
-};
+// IFC type ID to human-readable name (built lazily after web-ifc loads)
+function buildTypeNames(wasm: typeof import('web-ifc')): Record<number, string> {
+  return {
+    [wasm.IFCWALL]: 'IfcWall',
+    [wasm.IFCWALLSTANDARDCASE]: 'IfcWallStandardCase',
+    [wasm.IFCSLAB]: 'IfcSlab',
+    [wasm.IFCCOLUMN]: 'IfcColumn',
+    [wasm.IFCBEAM]: 'IfcBeam',
+    [wasm.IFCDOOR]: 'IfcDoor',
+    [wasm.IFCWINDOW]: 'IfcWindow',
+    [wasm.IFCROOF]: 'IfcRoof',
+    [wasm.IFCSTAIR]: 'IfcStair',
+    [wasm.IFCSTAIRFLIGHT]: 'IfcStairFlight',
+    [wasm.IFCRAILING]: 'IfcRailing',
+    [wasm.IFCPLATE]: 'IfcPlate',
+    [wasm.IFCMEMBER]: 'IfcMember',
+    [wasm.IFCCURTAINWALL]: 'IfcCurtainWall',
+    [wasm.IFCFURNISHINGELEMENT]: 'IfcFurnishingElement',
+    [wasm.IFCBUILDINGELEMENTPROXY]: 'IfcBuildingElementProxy',
+    [wasm.IFCSPACE]: 'IfcSpace',
+    [wasm.IFCOPENINGELEMENT]: 'IfcOpeningElement',
+    [wasm.IFCFLOWSEGMENT]: 'IfcFlowSegment',
+    [wasm.IFCFLOWTERMINAL]: 'IfcFlowTerminal',
+    [wasm.IFCFLOWFITTING]: 'IfcFlowFitting',
+    [wasm.IFCCOVERING]: 'IfcCovering',
+    [wasm.IFCFOOTING]: 'IfcFooting',
+    [wasm.IFCPILE]: 'IfcPile',
+  };
+}
+
+let cachedTypeNames: Record<number, string> | null = null;
 
 // Color palette for IFC element types
 const TYPE_COLORS: Record<string, number> = {
@@ -61,8 +69,6 @@ const TYPE_COLORS: Record<string, number> = {
   IfcFooting: 0xaaaaaa,
 };
 
-const DEFAULT_COLOR = 0xbbbbbb;
-
 export interface IFCElementInfo {
   expressId: number;
   globalId: string;
@@ -80,7 +86,13 @@ export async function loadIFC(
   url: string,
   onProgress?: (percent: number) => void,
 ): Promise<IFCLoadResult> {
-  const api = await getIfcApi();
+  const { api, wasm } = await getIfcApi();
+
+  // Build type name map (once)
+  if (!cachedTypeNames) {
+    cachedTypeNames = buildTypeNames(wasm);
+  }
+  const IFC_TYPE_NAMES = cachedTypeNames;
 
   // Fetch the IFC file
   onProgress?.(5);

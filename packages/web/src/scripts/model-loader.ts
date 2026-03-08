@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import type { ViewerInstance } from './viewer';
 import type { ModelFile, BIMElement } from '@bentar/shared';
-import { loadIFC as loadIFCFile } from './ifc-loader';
 
 export interface LoadedModel {
   file: ModelFile;
@@ -34,6 +33,7 @@ export async function loadModel(
     }
 
     case 'ifc': {
+      const { loadIFC: loadIFCFile } = await import('./ifc-loader');
       const result = await loadIFCFile(model.path);
       viewer.scene.add(result.group);
       // Convert IFC elements to BIMElement format

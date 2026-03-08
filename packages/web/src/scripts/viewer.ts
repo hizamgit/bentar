@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { loadIFC as loadIFCFile } from './ifc-loader';
 import type { IFCElementInfo } from './ifc-loader';
 
 export interface ViewerInstance {
@@ -119,6 +118,8 @@ export function initViewer(canvas: HTMLCanvasElement): ViewerInstance {
     }
 
     try {
+      // Dynamic import — only loads web-ifc WASM when first IFC file is opened
+      const { loadIFC: loadIFCFile } = await import('./ifc-loader');
       const result = await loadIFCFile(url, (percent) => {
         if (loading) loading.textContent = `Loading IFC... ${percent}%`;
       });
