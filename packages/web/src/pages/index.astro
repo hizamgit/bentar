@@ -1,0 +1,306 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Dashboard">
+  <div class="dashboard">
+    <header class="header">
+      <div class="logo">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <rect width="28" height="28" rx="6" fill="#3b82f6"/>
+          <path d="M7 8h14v3H7zM7 13h10v3H7zM7 18h12v3H7z" fill="white" opacity="0.9"/>
+        </svg>
+        <h1>Bentar</h1>
+      </div>
+      <p class="subtitle">Realtime BIM Collaboration</p>
+    </header>
+
+    <main class="content">
+      <div class="section-header">
+        <h2>Projects</h2>
+        <button id="create-project-btn" class="btn-primary">+ New Project</button>
+      </div>
+
+      <div id="projects-list" class="projects-grid">
+        <div class="empty-state">
+          <p>No projects yet. Create one to get started.</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Create Project Modal -->
+    <dialog id="create-modal" class="modal">
+      <form id="create-form" class="modal-content">
+        <h3>Create New Project</h3>
+        <label>
+          <span>Project Name</span>
+          <input type="text" name="name" placeholder="My BIM Project" required />
+        </label>
+        <label>
+          <span>Description</span>
+          <textarea name="description" placeholder="Project description..." rows="3"></textarea>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" id="cancel-create">Cancel</button>
+          <button type="submit" class="btn-primary">Create Project</button>
+        </div>
+      </form>
+    </dialog>
+  </div>
+</Layout>
+
+<script>
+  const API_BASE = '/api';
+
+  const projectsList = document.getElementById('projects-list')!;
+  const createBtn = document.getElementById('create-project-btn')!;
+  const createModal = document.getElementById('create-modal') as HTMLDialogElement;
+  const createForm = document.getElementById('create-form') as HTMLFormElement;
+  const cancelBtn = document.getElementById('cancel-create')!;
+
+  async function loadProjects() {
+    try {
+      const res = await fetch(`${API_BASE}/projects`);
+      const projects = await res.json();
+
+      if (projects.length === 0) {
+        projectsList.innerHTML = `
+          <div class="empty-state">
+            <p>No projects yet. Create one to get started.</p>
+          </div>
+        `;
+        return;
+      }
+
+      projectsList.innerHTML = projects.map((p: { id: string; name: string; description: string; modelCount: number; memberCount: number }) => `
+        <a href="/project?id=${p.id}" class="project-card">
+          <div class="project-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <h3>${p.name}</h3>
+          <p>${p.description || 'No description'}</p>
+          <div class="project-meta">
+            <span>${p.modelCount} models</span>
+            <span>${p.memberCount} members</span>
+          </div>
+        </a>
+      `).join('');
+    } catch {
+      projectsList.innerHTML = `
+        <div class="empty-state">
+          <p>Could not connect to server. Make sure the Bentar server is running.</p>
+        </div>
+      `;
+    }
+  }
+
+  createBtn.addEventListener('click', () => createModal.showModal());
+  cancelBtn.addEventListener('click', () => createModal.close());
+
+  createForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(createForm);
+    const name = formData.get('name') as string;
+    const description = formData.get('description') as string;
+
+    const res = await fetch(`${API_BASE}/projects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description }),
+    });
+
+    if (res.ok) {
+      createModal.close();
+      createForm.reset();
+      loadProjects();
+    }
+  });
+
+  loadProjects();
+</script>
+
+<style>
+  .dashboard {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 2rem 3rem;
+    overflow-y: auto;
+  }
+
+  .header {
+    margin-bottom: 2rem;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .logo h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  .subtitle {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    margin-left: 2.75rem;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .section-header h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  .projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .project-card {
+    display: block;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    transition: border-color 0.15s, background 0.15s;
+    color: var(--color-text);
+  }
+
+  .project-card:hover {
+    border-color: var(--color-primary);
+    background: var(--color-surface-hover);
+  }
+
+  .project-icon {
+    color: var(--color-primary);
+    margin-bottom: 0.75rem;
+  }
+
+  .project-card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.375rem;
+  }
+
+  .project-card p {
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    margin-bottom: 1rem;
+  }
+
+  .project-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+  }
+
+  .empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem;
+    color: var(--color-text-muted);
+  }
+
+  .btn-primary {
+    background: var(--color-primary);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: background 0.15s;
+  }
+
+  .btn-primary:hover {
+    background: var(--color-primary-hover);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--color-text-muted);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+  }
+
+  .btn-ghost:hover {
+    color: var(--color-text);
+    background: var(--color-surface-hover);
+  }
+
+  .modal {
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+
+  .modal::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  .modal-content {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    min-width: 400px;
+    color: var(--color-text);
+  }
+
+  .modal-content h3 {
+    font-size: 1.125rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .modal-content label {
+    display: block;
+    margin-bottom: 1rem;
+  }
+
+  .modal-content label span {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    margin-bottom: 0.375rem;
+    color: var(--color-text-muted);
+  }
+
+  .modal-content input,
+  .modal-content textarea {
+    width: 100%;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    color: var(--color-text);
+    font-size: 0.875rem;
+  }
+
+  .modal-content input:focus,
+  .modal-content textarea:focus {
+    border-color: var(--color-primary);
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+  }
+</style>
