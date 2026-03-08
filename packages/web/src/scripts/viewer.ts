@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadIFC as loadIFCFile } from './ifc-loader';
+import type { IFCElementInfo } from './ifc-loader';
 
 export interface ViewerInstance {
   scene: THREE.Scene;
@@ -9,6 +11,7 @@ export interface ViewerInstance {
   controls: OrbitControls;
   raycaster: THREE.Raycaster;
   loadGLTF: (url: string) => Promise<THREE.Group>;
+  loadIFC: (url: string) => Promise<{ group: THREE.Group; elements: IFCElementInfo[] }>;
   highlightElement: (meshId: string, color?: string) => void;
   clearHighlights: () => void;
   getSelectedMeshId: () => string | null;
@@ -74,6 +77,24 @@ export function initViewer(canvas: HTMLCanvasElement): ViewerInstance {
   // GLTF Loader
   const gltfLoader = new GLTFLoader();
 
+  // Fit camera to loaded model helper
+  function fitCameraToModel(object: THREE.Object3D): void {
+    const box = new THREE.Box3().setFromObject(object);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+
+    if (maxDim === 0) return;
+
+    const scale = 20 / maxDim;
+    object.scale.setScalar(scale);
+    object.position.sub(center.multiplyScalar(scale));
+
+    controls.target.set(0, 0, 0);
+    camera.position.set(maxDim * scale, maxDim * scale * 0.75, maxDim * scale);
+    controls.update();
+  }
+
   async function loadGLTF(url: string): Promise<THREE.Group> {
     return new Promise((resolve, reject) => {
       gltfLoader.load(
@@ -81,26 +102,35 @@ export function initViewer(canvas: HTMLCanvasElement): ViewerInstance {
         (gltf) => {
           const model = gltf.scene;
           scene.add(model);
-
-          // Center and scale model
-          const box = new THREE.Box3().setFromObject(model);
-          const center = box.getCenter(new THREE.Vector3());
-          const size = box.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z);
-          const scale = 20 / maxDim;
-          model.scale.setScalar(scale);
-          model.position.sub(center.multiplyScalar(scale));
-
-          controls.target.set(0, 0, 0);
-          camera.position.set(maxDim * scale, maxDim * scale * 0.75, maxDim * scale);
-          controls.update();
-
+          fitCameraToModel(model);
           resolve(model);
         },
         undefined,
         reject,
       );
     });
+  }
+
+  async function loadIFC(url: string): Promise<{ group: THREE.Group; elements: IFCElementInfo[] }> {
+    const loading = document.getElementById('viewer-loading');
+    if (loading) {
+      loading.classList.remove('hidden');
+      loading.textContent = 'Loading IFC model...';
+    }
+
+    try {
+      const result = await loadIFCFile(url, (percent) => {
+        if (loading) loading.textContent = `Loading IFC... ${percent}%`;
+      });
+
+      scene.add(result.group);
+      fitCameraToModel(result.group);
+
+      console.log(`IFC viewer: loaded ${result.elements.length} elements`);
+      return { group: result.group, elements: result.elements };
+    } finally {
+      if (loading) loading.classList.add('hidden');
+    }
   }
 
   function highlightElement(meshId: string, color = '#3b82f6'): void {
@@ -142,7 +172,7 @@ export function initViewer(canvas: HTMLCanvasElement): ViewerInstance {
     clearHighlights();
 
     const hit = intersects.find(
-      (i) => i.object instanceof THREE.Mesh && i.object !== gridHelper,
+      (i) => i.object instanceof THREE.Mesh && (i.object as THREE.Object3D) !== gridHelper,
     );
 
     if (hit && hit.object instanceof THREE.Mesh) {
@@ -150,7 +180,15 @@ export function initViewer(canvas: HTMLCanvasElement): ViewerInstance {
       highlightElement(selectedMeshId);
 
       const info = document.getElementById('element-info');
-      if (info) info.textContent = hit.object.name || `Element: ${selectedMeshId.slice(0, 8)}`;
+      if (info) {
+        const ud = hit.object.userData;
+        if (ud?.type) {
+          // IFC element — show type and name
+          info.textContent = `${ud.type}: ${hit.object.name}`;
+        } else {
+          info.textContent = hit.object.name || `Element: ${selectedMeshId.slice(0, 8)}`;
+        }
+      }
     } else {
       selectedMeshId = null;
       const info = document.getElementById('element-info');
@@ -196,6 +234,7 @@ export function initViewer(canvas: HTMLCanvasElement): ViewerInstance {
     controls,
     raycaster,
     loadGLTF,
+    loadIFC,
     highlightElement,
     clearHighlights,
     getSelectedMeshId: () => selectedMeshId,

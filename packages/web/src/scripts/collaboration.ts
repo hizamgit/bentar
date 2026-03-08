@@ -65,6 +65,8 @@ export function initCollaboration(projectId: string, viewer: ViewerInstance) {
     state.models.forEach((model) => {
       if (model.format === 'glb' || model.format === 'gltf') {
         viewer.loadGLTF(model.path);
+      } else if (model.format === 'ifc') {
+        viewer.loadIFC(model.path);
       }
     });
   });
@@ -99,6 +101,8 @@ export function initCollaboration(projectId: string, viewer: ViewerInstance) {
     addModelToList(model);
     if (model.format === 'glb' || model.format === 'gltf') {
       viewer.loadGLTF(model.path);
+    } else if (model.format === 'ifc') {
+      viewer.loadIFC(model.path);
     }
   });
 
@@ -140,6 +144,8 @@ export function initCollaboration(projectId: string, viewer: ViewerInstance) {
 
         if (model.format === 'glb' || model.format === 'gltf') {
           await viewer.loadGLTF(model.path);
+        } else if (model.format === 'ifc') {
+          await viewer.loadIFC(model.path);
         }
       }
     } catch (err) {

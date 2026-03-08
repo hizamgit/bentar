@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { ViewerInstance } from './viewer';
 import type { ModelFile, BIMElement } from '@bentar/shared';
+import { loadIFC as loadIFCFile } from './ifc-loader';
 
 export interface LoadedModel {
   file: ModelFile;
@@ -33,12 +34,18 @@ export async function loadModel(
     }
 
     case 'ifc': {
-      // IFC loading will be implemented with @thatopen/components
-      // For now, log that IFC support requires the engine_components package
-      console.warn(
-        'IFC loading requires @thatopen/components. ' +
-        'Convert IFC to glTF/GLB for current viewer support.',
-      );
+      const result = await loadIFCFile(model.path);
+      viewer.scene.add(result.group);
+      // Convert IFC elements to BIMElement format
+      result.elements.forEach((el) => {
+        elements.push({
+          globalId: el.globalId || `ifc-${el.expressId}`,
+          modelId: model.id,
+          ifcType: el.type,
+          name: el.name,
+          properties: [],
+        });
+      });
       break;
     }
 
