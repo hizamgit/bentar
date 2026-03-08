@@ -4,10 +4,10 @@ export interface User {
   email: string;
   color: string;
   avatar?: string;
-  source: 'web' | 'revit' | 'archicad' | 'sketchup' | 'blender' | 'maya';
+  source: 'web' | 'revit' | 'archicad' | 'sketchup' | 'blender' | 'maya' | 'rhino';
 }
 
-export type ModelFormat = 'ifc' | 'gltf' | 'glb' | 'fragments';
+export type ModelFormat = 'ifc' | 'gltf' | 'glb' | 'fragments' | '3dm';
 
 export interface ModelFile {
   id: string;

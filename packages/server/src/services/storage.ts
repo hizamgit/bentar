@@ -15,6 +15,7 @@ export function getModelFormat(filename: string): ModelFormat | null {
     case '.ifc': return 'ifc';
     case '.gltf': return 'gltf';
     case '.glb': return 'glb';
+    case '.3dm': return '3dm';
     default: return null;
   }
 }

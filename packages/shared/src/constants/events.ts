@@ -44,10 +44,12 @@ export const SUPPORTED_FORMATS = {
   ifc: ['.ifc'],
   gltf: ['.gltf'],
   glb: ['.glb'],
+  '3dm': ['.3dm'],
 } as const;
 
 export const ALL_SUPPORTED_EXTENSIONS = [
   ...SUPPORTED_FORMATS.ifc,
   ...SUPPORTED_FORMATS.gltf,
   ...SUPPORTED_FORMATS.glb,
+  ...SUPPORTED_FORMATS['3dm'],
 ];
