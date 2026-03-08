@@ -9,6 +9,7 @@ import type {
   ModelFile,
 } from '@bentar/shared';
 import type { ViewerInstance } from './viewer';
+import type { IFCElementInfo } from './ifc-loader';
 
 type CollabSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -62,11 +63,12 @@ export function initCollaboration(projectId: string, viewer: ViewerInstance) {
     renderModels(state.models);
 
     // Load any existing models
-    state.models.forEach((model) => {
+    state.models.forEach(async (model) => {
       if (model.format === 'glb' || model.format === 'gltf') {
         viewer.loadGLTF(model.path);
       } else if (model.format === 'ifc') {
-        viewer.loadIFC(model.path);
+        const result = await viewer.loadIFC(model.path);
+        renderElementTree(result.elements);
       }
     });
   });
@@ -97,12 +99,13 @@ export function initCollaboration(projectId: string, viewer: ViewerInstance) {
   });
 
   // New model notification
-  socket.on('model:added', (model) => {
+  socket.on('model:added', async (model) => {
     addModelToList(model);
     if (model.format === 'glb' || model.format === 'gltf') {
       viewer.loadGLTF(model.path);
     } else if (model.format === 'ifc') {
-      viewer.loadIFC(model.path);
+      const result = await viewer.loadIFC(model.path);
+      renderElementTree(result.elements);
     }
   });
 
@@ -145,7 +148,8 @@ export function initCollaboration(projectId: string, viewer: ViewerInstance) {
         if (model.format === 'glb' || model.format === 'gltf') {
           await viewer.loadGLTF(model.path);
         } else if (model.format === 'ifc') {
-          await viewer.loadIFC(model.path);
+          const result = await viewer.loadIFC(model.path);
+          renderElementTree(result.elements);
         }
       }
     } catch (err) {
@@ -247,6 +251,123 @@ export function initCollaboration(projectId: string, viewer: ViewerInstance) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+  }
+
+  // --- Element Tree ---
+
+  const elementTreeEl = document.getElementById('element-tree');
+  const propertiesPanel = document.getElementById('properties-panel');
+
+  function renderElementTree(elements: IFCElementInfo[]) {
+    if (!elementTreeEl || elements.length === 0) return;
+
+    // Group elements by IFC type
+    const grouped = new Map<string, IFCElementInfo[]>();
+    for (const el of elements) {
+      const list = grouped.get(el.type) || [];
+      list.push(el);
+      grouped.set(el.type, list);
+    }
+
+    // Sort types alphabetically
+    const sortedTypes = [...grouped.keys()].sort();
+
+    // IFC type icons
+    const typeIcons: Record<string, string> = {
+      IfcWall: '▬', IfcWallStandardCase: '▬',
+      IfcSlab: '▭', IfcColumn: '▮', IfcBeam: '═',
+      IfcDoor: '🚪', IfcWindow: '⬜', IfcRoof: '⌂',
+      IfcStair: '⊡', IfcStairFlight: '⊡',
+      IfcRailing: '║', IfcSpace: '◻',
+      IfcFurnishingElement: '◆', IfcCovering: '▫',
+    };
+
+    let html = '';
+    for (const type of sortedTypes) {
+      const items = grouped.get(type)!;
+      const icon = typeIcons[type] ?? '●';
+      html += `
+        <div class="tree-group">
+          <div class="tree-item tree-group-header" data-type="${type}">
+            <span class="tree-toggle">▸</span>
+            <span class="tree-icon">${icon}</span>
+            <span>${type}</span>
+            <span class="tree-count">${items.length}</span>
+          </div>
+          <div class="tree-node tree-children" style="display:none">
+            ${items.map((el) => `
+              <div class="tree-item tree-element" data-express-id="${el.expressId}" data-global-id="${el.globalId}">
+                <span class="tree-icon">·</span>
+                <span>${el.name}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Summary at top
+    const totalCount = elements.length;
+    const typeCount = sortedTypes.length;
+    html = `<div class="tree-summary">${totalCount} elements · ${typeCount} types</div>` + html;
+
+    elementTreeEl.innerHTML = html;
+
+    // Toggle expand/collapse on group headers
+    elementTreeEl.querySelectorAll('.tree-group-header').forEach((header) => {
+      header.addEventListener('click', () => {
+        const children = header.nextElementSibling as HTMLElement;
+        const toggle = header.querySelector('.tree-toggle') as HTMLElement;
+        if (children.style.display === 'none') {
+          children.style.display = 'block';
+          toggle.textContent = '▾';
+        } else {
+          children.style.display = 'none';
+          toggle.textContent = '▸';
+        }
+      });
+    });
+
+    // Click element to highlight in viewer
+    elementTreeEl.querySelectorAll('.tree-element').forEach((item) => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const el = item as HTMLElement;
+        const expressId = el.dataset.expressId;
+
+        // Clear previous selection
+        elementTreeEl.querySelectorAll('.tree-element').forEach((i) => i.classList.remove('selected'));
+        el.classList.add('selected');
+
+        // Find matching mesh in viewer by expressId and highlight it
+        viewer.clearHighlights();
+        viewer.scene.traverse((child) => {
+          if ((child as any).isMesh && child.userData?.expressId === Number(expressId)) {
+            viewer.highlightElement(child.uuid);
+            // Show properties
+            showElementProperties(child.userData, child.name);
+          }
+        });
+      });
+    });
+  }
+
+  function showElementProperties(userData: any, name: string) {
+    if (!propertiesPanel) return;
+
+    const props = [
+      { name: 'Name', value: name },
+      { name: 'Type', value: userData.type || 'Unknown' },
+      { name: 'Express ID', value: userData.expressId ?? '-' },
+      { name: 'Global ID', value: userData.globalId || '-' },
+    ];
+
+    propertiesPanel.innerHTML = props.map((p) => `
+      <div class="prop-row">
+        <span class="prop-name">${p.name}</span>
+        <span class="prop-value">${p.value}</span>
+      </div>
+    `).join('');
   }
 
   // Cleanup on page unload
